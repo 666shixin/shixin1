@@ -1,0 +1,236 @@
+
+def dreidingfile(infile, dreidingtxt,outfile):
+
+    f1 = open(infile, 'r')
+    f2 = open(dreidingtxt,'r')
+    f3 = open(outfile, 'w')
+
+    atomname1 = []
+    atomMasstemp = []
+    atomname2 = []
+##################################################################################################atomMass
+    for line in f1:
+        line = line.strip().split()
+        if 'Masses' in line:
+            line = '  '.join(str(i) for i in line)
+            f3.write(line)
+            f3.write('\n')
+        if '0.000000' in line and 2 < len(line) < 8:
+            atomname1.append(line[-1])
+    for dreidingline in f2:
+        dreidingline = dreidingline.strip().split()
+        if '!' in dreidingline:
+            atomMasstemp.append(dreidingline[2])
+            atomname2.append(dreidingline[0])
+    #print(atomMasstemp[atomname2.index('P_3')])
+    for i in range(len(atomname1)):
+        atomMass = atomMasstemp[atomname2.index(atomname1[i])]
+        dataMass =[str(i+1).rjust(2),atomMass.rjust(9),'#',atomname1[i]]
+        dataMass =' '.join(dataMass)
+        f3.write(dataMass)
+        f3.write('\n')
+    f1.seek(0)
+    f2.seek(0)
+##########################################################################################pair_coeff
+    f3.write('''
+''')
+    Sigmatemp = []
+    Epsilontemp = []
+    atomname3 = []
+    for dreidingline in f2:
+        dreidingline = dreidingline.strip().split()
+        if 'LJ_6_12' in dreidingline:
+            Sigmatemp.append(dreidingline[2])
+            Epsilontemp.append(float(dreidingline[3])/4)
+            atomname3.append(dreidingline[0])
+    for i in range(len(atomname1)):
+        Sigma = Sigmatemp[atomname3.index(atomname1[i])]
+        Epsil = Epsilontemp[atomname3.index(atomname1[i])]
+        pair_coeff =['pair_coeff',str(i+1).rjust(2),str(i+1).rjust(2),'lj/cut/coul/cut','%.5f'%Epsil,Sigma,'#',atomname1[i]]
+        pair_coeff ='  '.join(pair_coeff)
+        f3.write(pair_coeff)
+        f3.write('\n')
+    f1.seek(0)
+    f2.seek(0)
+#####################################################################################################bond_style
+    f3.write('''
+bond_style		harmonic
+''')
+    forceConstanttemp = []
+    bondType = []
+    bondAngletemp = []
+    bondNameid = []
+    for line in f1:
+        line = line.strip().split()
+        if '0.0000' in line and len(line[-1].split('-'))<3:
+            bondType.append(line[-1].split('-'))
+    #print(bondType)
+    for dreidingline in f2:
+        dreidingline = dreidingline.strip().split()
+        if 'HARMONIC' in dreidingline:
+            bondAngletemp.append(dreidingline[4])
+            forceConstanttemp.append(float(dreidingline[3])/2)
+            bondName=[dreidingline[0],dreidingline[1]]
+            bondNameidtemp = sorted(bondName)
+            bondNameid.append(bondNameidtemp)
+    #print(bondNameid)
+    for i in range(len(bondType)):
+        #print(bondType[i])
+        bondname_='-'.join(bondType[i])
+        bondTypeid = sorted(bondType[i])
+        #print(bondTypeid)
+        forceConstant = forceConstanttemp[bondNameid.index(bondTypeid)]
+        bondAngle = bondAngletemp[bondNameid.index(bondTypeid)]
+        bond_coeff =['bond_coeff',str(i+1).rjust(2),'%.4f'%forceConstant,bondAngle,'#',bondname_]
+        bond_coeff ='  '.join(bond_coeff)
+        f3.write(bond_coeff)
+        f3.write('\n')
+    f1.seek(0)
+    f2.seek(0)
+#############################################################################################angle_style
+    f3.write('''
+angle_style		harmonic
+''')
+    AngleType=[]
+    secondatom1=[]
+    secondatom2=[]
+    Angletemp=[]
+    Ktemp=[]
+
+    for line in f1:
+        line = line.strip().split()
+        if '0.0000' in line and len(line[-1].split('-'))==3:
+            AngleType.append(line[-1].split('-'))
+    for i in AngleType:
+        secondatom1.append(i[1])
+    for dreidingline in f2:
+        dreidingline = dreidingline.strip().split()
+        if 'THETA_HARM' in dreidingline:
+            Angletemp.append(dreidingline[5])
+            Ktemp.append(float(dreidingline[4]) / 2)
+            secondatom2.append(dreidingline[1])
+    for i in range(len(secondatom1)):
+        anglename_ = '-'.join(AngleType[i])
+        K = Ktemp[secondatom2.index(secondatom1[i])]
+        Angle = Angletemp[secondatom2.index(secondatom1[i])]
+        angle_coeff =['angle_coeff',str(i+1).rjust(2),'%.0f'%K,Angle,'#',anglename_]
+        angle_coeff ='  '.join(angle_coeff)
+        f3.write(angle_coeff)
+        f3.write('\n')
+    f1.seek(0)
+    f2.seek(0)
+##############################################################################################
+    f3.write('''
+dihedral_style  harmonic
+''')
+    f4 = open('temp.txt', 'w+')
+    for line in f1:
+        if '0.0000   0   0 ' in line:
+            f4.write(line)
+    f4.seek(0,0)
+    dihedralType = []
+    kdihedraltemp = []
+    Dtemp = []
+    Ntemp = []
+    dihedralNamemiddle = []
+    dihedralTypemiddle = []
+    Namebiside = []
+    before = []
+    later = []
+    for i in range(13):###############################################################二面角个数
+        line = next(f4)
+        line = line.strip().split()
+        dihedralType.append(line[-1].split('-'))
+    #print(dihedralType)
+    for dreidingline in f2:
+        dreidingline = dreidingline.strip().split()
+        if 'DIHEDRAL' in dreidingline:
+            kdihedraltemp.append(float(dreidingline[5]) / 2)
+            Dtemp.append(float(dreidingline[7]) * (-1))
+            Ntemp.append(float(dreidingline[6]))
+            dihedralName = [dreidingline[0], dreidingline[1], dreidingline[2], dreidingline[3]]
+            Namemiddle = [dihedralName[1], dihedralName[2]]                                    #dreing文件里的名字
+            Namebisidetemp = [dihedralName[0], dihedralName[3]]
+            Namebisidetemp.remove('X')
+            Namebiside.append(Namebisidetemp)
+            dihedralNamemiddleidtemp = sorted(Namemiddle)
+            dihedralNamemiddle.append(dihedralNamemiddleidtemp) #dreing文件里的名字
+    # print(dihedralNamemiddle)
+    #print(Namebiside)
+    dihedralName_=[]
+    for i in range(len(dihedralType)):
+        dihedralna='-'.join(dihedralType[i])
+        dihedralName_.append(dihedralna)
+        Typemiddle = [dihedralType[i][1], dihedralType[i][2]]
+        Namebefore = [dihedralType[i][0]]
+        Namelater = [dihedralType[i][3]]
+        before.append(Namebefore)
+        later.append(Namelater)
+        dihedralTypemiddleid = sorted(Typemiddle)   #data文件里的名字
+        dihedralTypemiddle.append(dihedralTypemiddleid)
+    #print(before)
+    #print(len(dihedralTypemiddle))
+    dihedral=[]
+    dihe=[]
+    for i in range(len(dihedralTypemiddle)):#data文件里的名字
+        if dihedralTypemiddle[i] not in dihedralNamemiddle:
+            dih = ['dihedral_coeff', str(i + 1).rjust(2), ' 0.0000  -1  0  #', dihedralName_[i]]
+            dihe.append(dih)
+        else:
+            for id,x in enumerate(dihedralNamemiddle):
+                if dihedralTypemiddle[i] == dihedralNamemiddle[id]:#如果data中间两个原子在dreiding中间两个原子的列表
+                    if before[i]== Namebiside[id] or later[i] == Namebiside[id]:
+                        #print(before[i], later[i],id,Namebiside[id])
+                        dihedral_coeff = ['dihedral_coeff', str(i + 1).rjust(2), ('%.4f' % kdihedraltemp[id]).rjust(7),('%.0f' % Dtemp[id]).rjust(2), '%.0f' % Ntemp[id], '#', dihedralName_[i]]
+                        #print(dihedral_coeff)
+                        dihedral.append(dihedral_coeff)
+    #print(dihedral)
+                    else:
+                        n = dihedralNamemiddle.index(dihedralTypemiddle[i])
+                        dihedral_coeff = ['dihedral_coeff', str(i + 1).rjust(2), ('%.4f' % kdihedraltemp[n]).rjust(7),('%.0f' % Dtemp[n]).rjust(2), '%.0f' % Ntemp[n], '#', dihedralName_[i]]
+                        dihedral.append(dihedral_coeff)
+
+    #print(dihedral)
+    dihedral = dihe+dihedral
+    dihedral = sorted(dihedral)
+    di =[]
+    dih = []
+    for h in range(len(dihedral)):
+        if dihedral[h][1] not in di:
+            di.append(dihedral[h][1])
+            dih.append(h)
+    for i in range(len(dih)):
+        #print(dih[i])
+        s=dih[i]
+        final = '  '.join(dihedral[s])
+        #print(dihedral[s])
+        f3.write(final)
+        f3.write('\n')
+
+#####################################################################################################improper_style
+    f3.write('''
+# improper_style  umbrella
+''')
+    improperName=[]
+    for line in f4:
+        line = line.strip().split()
+        improperName.append(line[-1].split('-'))
+    #print(improperName)
+    for i in range(len(improperName)):
+        improperNameid = '-'.join(improperName[i])
+        if improperName[i][0] or improperName[i][3]  in ['B_2','C_31','C_22','C_21','C_2','C_R2','C_R1','C_R','N_2','N_R ','O_2','O_R']:
+            improperStyle = ['improper_coeff',str(i+1).rjust(2),'40.0000    0.0000 #',improperNameid]
+        else:
+            improperStyle = ['improper_coeff', str(i + 1).rjust(2), '0.00000    0.0000 #', improperNameid]
+        improperStyle = '  '.join(improperStyle)
+        f3.write(improperStyle)
+        f3.write('\n')
+
+########################################
+
+    f1.close()
+    f2.close()
+    f3.close()
+    f4.close()
+
+dreidingfile('pbt.data', 'dreiding.txt','PBTout.txt')
